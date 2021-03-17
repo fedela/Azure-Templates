@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualMachineAdminPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/84a73909-af92-4d6c-b6b1-58abaa653f19/resourceGroups/nossh/providers/Microsoft.KeyVault/vaults/fedela-keyvault"
+        },
+        "secretName": "labadmin"
+      }
+    },
+    "virtualMachineNamePrefix": {
+      "value": "MyVM0"
+    },
+    "virtualMachineCount": {
+      "value": 3
+    },
+    "virtualMachineSize": {
+      "value": "Standard_DS3_v2"
+    },
+    "operatingSystem": {
+      "value": "Server2019"
+    },
+    "availabilitySetName": {
+      "value": "MyAvailabilitySet"
+    },
+    "dnsPrefixForPublicIP": {
+      "value": "fedelatest"
+    },
+    "dataDiskCount": {
+      "value": 2
+    },
+    "dataDisksSizeGB": {
+      "value": 10
+    },
+    "dataDisksType": {
+      "value": "Premium_LRS"
+    },
+    "vNetName": {
+      "value": "myVNET"
+    },
+    "SubnetName": {
+      "value": "Subnet1"
+    }
+  }
+}
