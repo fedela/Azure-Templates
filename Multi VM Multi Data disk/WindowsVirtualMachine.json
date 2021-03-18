@@ -1,11 +1,11 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
     "virtualMachineAdminPassword": {
       "type": "securestring",
       "metadata": {
-        "description": "Administrator password for the local admin account"
+        "description": "Admin password"
       }
     },
     "virtualMachineNamePrefix": {
@@ -35,32 +35,11 @@
         "description": "Data disks type"
       }
     },
-    "operatingSystem": {
-      "type": "string",
-      "defaultValue": "Server2019",
-      "metadata": {
-        "description": "Operating System of the Server"
-      },
-      "allowedValues": [
-        "Server2012R2",
-        "Server2016",
-        "Server2019"
-      ]
-    },
     "availabilitySetName": {
       "defaultValue": "MyAvailabilitySet",
       "type": "string",
       "metadata": {
         "description": "Availability Set Name where the VM will be placed"
-      }
-    },
-    "dnsPrefixForPublicIP": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 14,
-      "defaultValue": "[uniqueString(resourceGroup().id)]",
-      "metadata": {
-        "description": "Globally unique DNS prefix for the Public IPs used to access the Virtual Machines"
       }
     },
     "dataDiskCount": {
@@ -97,10 +76,20 @@
       }
     },
     "SubnetName": {
-      "defaultValue": "Subnet1",
+      "defaultValue": "Subnet",
       "type": "string",
       "metadata": {
         "description": "Subnet name"
+      }
+    },
+    "imageName": {
+      "type": "string",
+      "defaultValue": "image-sql",
+      "allowedValues": [
+        "image-sql"
+      ],
+      "metadata": {
+        "description": "Image name"
       }
     }
   },
@@ -125,162 +114,163 @@
     },
     "availabilitySetPlatformFaultDomainCount": "2",
     "availabilitySetPlatformUpdateDomainCount": "5",
-    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'),  parameters('SubnetName'))]",
-    "networkSecurityGroupName": "default-NSG",
+    "vNetRG": "fdlrsg01",
+    "subnetRef": "[resourceId(variables('vNetRG'), 'Microsoft.Network/virtualNetworks/subnets', parameters('vNetName'),  parameters('SubnetName'))]",
     "virtualMachineAdminUserName": "labadmin",
     "scriptURI": "https://fdldiag01.blob.core.windows.net/test/hello.ps1",
-    "location": "westeurope"
+    "location": "westeurope",
+    "imageRG": "RG-OVERLAPING-B",
+    "imageRef": "[resourceId(variables('imageRG'), 'Microsoft.Compute/images', parameters('imageName'))]",
+    "storageAccountName": "fdldiag01",
+    "storageAccountRG": "RG-OVERLAPING-B",
+    "storageAccountRef": "[resourceId(variables('storageAccountRG'), 'Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
   },
-    "resources": [
-      {
-        "name": "[variables('diagnosticStorageAccountName')]",
-        "type": "Microsoft.Storage/storageAccounts",
-        "location": "[variables('location')]",
-        "apiVersion": "2019-06-01",
-        "sku": {
-          "name": "Standard_LRS"
-        },
-        "tags": {
-          "displayName": "diagnosticStorageAccount"
-        },
-        "kind": "StorageV2"
+  "resources": [
+    {
+      "name": "[variables('diagnosticStorageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[variables('location')]",
+      "apiVersion": "2019-06-01",
+      "sku": {
+        "name": "Standard_LRS"
       },
-      {
-        "type": "Microsoft.Compute/availabilitySets",
-        "name": "[parameters('availabilitySetName')]",
-        "apiVersion": "2020-06-01",
-        "location": "[variables('location')]",
-        "properties": {
-          "platformFaultDomainCount": "[variables('availabilitySetPlatformFaultDomainCount')]",
-          "platformUpdateDomainCount": "[variables('availabilitySetPlatformUpdateDomainCount')]"
-        },
-        "sku": {
-          "name": "Aligned"
-        }
+      "tags": {
+        "displayName": "diagnosticStorageAccount"
       },
-      {
-        "type": "Microsoft.Compute/virtualMachines",
-        "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1))]",
-        "apiVersion": "2020-06-01",
-        "location": "[variables('location')]",
-        "copy": {
-          "name": "VMcopy",
-          "count": "[parameters('virtualMachineCount')]"
-        },
-        "properties": {
-          "hardwareProfile": {
-            "vmSize": "[parameters('virtualMachineSize')]"
-          },
-          "storageProfile": {
-            "imageReference": {
-              "publisher": "[variables('operatingSystemValues')[parameters('operatingSystem')].PublisherValue]",
-              "offer": "[variables('operatingSystemValues')[parameters('operatingSystem')].OfferValue]",
-              "sku": "[variables('operatingSystemValues')[parameters('operatingSystem')].SkuValue]",
-              "version": "latest"
-            },
-            "osDisk": {
-              "name": "[concat(parameters('virtualMachineNamePrefix'),copyIndex(1))]",
-              "createOption": "FromImage",
-              "managedDisk": {
-                "storageAccountType": "Premium_LRS"
-              },
-              "caching": "ReadWrite"
-            },
-            "copy": [
-              {
-                "name": "dataDisks",
-                "count": "[parameters('dataDiskCount')]",
-                "input": {
-                  "diskSizeGB": "[parameters('dataDisksSizeGB')]",
-                  "lun": "[copyIndex('dataDisks')]",
-                  "createOption": "Empty",
-                  "managedDisk": {
-                    "storageAccountType": "[parameters('dataDisksType')]"
-                  }
-                }
-              }
-            ]
-          },
-          "osProfile": {
-            "computerName": "[concat(parameters('virtualMachineNamePrefix'),copyIndex(1))]",
-            "adminUsername": "[variables('virtualMachineAdminUserName')]",
-            "windowsConfiguration": {
-              "provisionVMAgent": true
-            },
-            "adminPassword": "[parameters('virtualMachineAdminPassword')]"
-          },
-          "networkProfile": {
-            "networkInterfaces": [
-              {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1'))]"
-              }
-            ]
-          },
-          "availabilitySet": {
-            "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySetName'))]"
-          },
-          "diagnosticsProfile": {
-            "bootDiagnostics": {
-              "enabled": true,
-              "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('diagnosticStorageAccountName')), '2016-01-01').primaryEndpoints.blob]"
-            }
-          }
-        },
-        "dependsOn": [
-          "[resourceId('Microsoft.Compute/availabilitySets/', parameters('availabilitySetName'))]",
-          "[resourceId('Microsoft.Storage/storageAccounts/', variables('diagnosticStorageAccountName'))]",
-          "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1'))]"
-        ]
+      "kind": "StorageV2"
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[parameters('availabilitySetName')]",
+      "apiVersion": "2020-06-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "platformFaultDomainCount": "[variables('availabilitySetPlatformFaultDomainCount')]",
+        "platformUpdateDomainCount": "[variables('availabilitySetPlatformUpdateDomainCount')]"
       },
-      {
-        "type": "Microsoft.Network/networkInterfaces",
-        "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1')]",
-        "apiVersion": "2020-05-01",
-        "location": "[variables('location')]",
-        "copy": {
-          "name": "NICCopy",
-          "count": "[parameters('virtualMachineCount')]"
+      "sku": {
+        "name": "Aligned"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1))]",
+      "apiVersion": "2020-06-01",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "VMcopy",
+        "count": "[parameters('virtualMachineCount')]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('virtualMachineSize')]"
         },
-        "properties": {
-          "ipConfigurations": [
+        "storageProfile": {
+          "imageReference": {
+            "id": "[variables('imageRef')]"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('virtualMachineNamePrefix'),copyIndex(1))]",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Premium_LRS"
+            },
+            "caching": "ReadWrite"
+          },
+          "copy": [
             {
-              "name": "ipconfig1",
-              "properties": {
-                "privateIPAllocationMethod": "Dynamic",
-                "subnet": {
-                  "id": "[variables('subnetRef')]"
+              "name": "dataDisks",
+              "count": "[parameters('dataDiskCount')]",
+              "input": {
+                "diskSizeGB": "[parameters('dataDisksSizeGB')]",
+                "lun": "[copyIndex('dataDisks')]",
+                "createOption": "Empty",
+                "managedDisk": {
+                  "storageAccountType": "[parameters('dataDisksType')]"
                 }
               }
             }
-          ],
-          "enableIPForwarding": false
+          ]
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('virtualMachineNamePrefix'),copyIndex(1))]",
+          "adminUsername": "[variables('virtualMachineAdminUserName')]",
+          "windowsConfiguration": {
+            "provisionVMAgent": true
+          },
+          "adminPassword": "[parameters('virtualMachineAdminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1'))]"
+            }
+          ]
+        },
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySetName'))]"
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true,
+            "storageUri": "[reference(variables('storageAccountRef'), '2016-01-01').primaryEndpoints.blob]"
+          }
         }
       },
-      {
-        "type": "Microsoft.Compute/virtualMachines/extensions",
-        "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1),'/customscript')]",
-        "apiVersion": "2018-06-01",
-        "location": "[variables('location')]",
-        "copy": {
-          "name": "extensionLoop",
-          "count": "[parameters('virtualMachineCount')]"
-        },
-        "dependsOn": [
-          "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineNamePrefix'), copyIndex(1))]"
-        ],
-        "properties": {
-          "publisher": "Microsoft.Compute",
-          "type": "CustomScriptExtension",
-          "typeHandlerVersion": "1.10",
-          "autoUpgradeMinorVersion": true,
-          "settings": {
-            "fileUris": [
-              "[variables('scriptURI')]"
-            ],
-            "commandToExecute": "powershell.exe .\\hello.ps1"
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/availabilitySets/', parameters('availabilitySetName'))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '-NIC1')]",
+      "apiVersion": "2020-05-01",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "NICCopy",
+        "count": "[parameters('virtualMachineCount')]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              }
+            }
           }
+        ],
+        "enableIPForwarding": false
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1),'/customscript')]",
+      "apiVersion": "2018-06-01",
+      "location": "[variables('location')]",
+      "copy": {
+        "name": "extensionLoop",
+        "count": "[parameters('virtualMachineCount')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineNamePrefix'), copyIndex(1))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Compute",
+        "type": "CustomScriptExtension",
+        "typeHandlerVersion": "1.10",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[variables('scriptURI')]"
+          ],
+          "commandToExecute": "powershell.exe .\\hello.ps1"
         }
       }
-    ],
-    "outputs": {}
-  }
+    }
+  ],
+  "outputs": {}
+}

@@ -5,7 +5,7 @@
     "virtualMachineAdminPassword": {
       "reference": {
         "keyVault": {
-          "id": "/subscriptions/84a73909-af92-4d6c-b6b1-58abaa653f19/resourceGroups/nossh/providers/Microsoft.KeyVault/vaults/fedela-keyvault"
+          "id": "keyvault-resourceID"
         },
         "secretName": "labadmin"
       }
@@ -19,14 +19,8 @@
     "virtualMachineSize": {
       "value": "Standard_DS3_v2"
     },
-    "operatingSystem": {
-      "value": "Server2019"
-    },
     "availabilitySetName": {
       "value": "MyAvailabilitySet"
-    },
-    "dnsPrefixForPublicIP": {
-      "value": "fedelatest"
     },
     "dataDiskCount": {
       "value": 2
@@ -38,10 +32,10 @@
       "value": "Premium_LRS"
     },
     "vNetName": {
-      "value": "myVNET"
+      "value": "MyVNET"
     },
     "SubnetName": {
-      "value": "Subnet1"
+      "value": "Subnet"
     }
   }
 }
