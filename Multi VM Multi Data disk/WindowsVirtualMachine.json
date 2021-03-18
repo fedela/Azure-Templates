@@ -94,24 +94,6 @@
     }
   },
   "variables": {
-    "diagnosticStorageAccountName": "[concat('diagst', uniqueString(resourceGroup().id))]",
-    "operatingSystemValues": {
-      "Server2012R2": {
-        "PublisherValue": "MicrosoftWindowsServer",
-        "OfferValue": "WindowsServer",
-        "SkuValue": "2012-R2-Datacenter"
-      },
-      "Server2016": {
-        "PublisherValue": "MicrosoftWindowsServer",
-        "OfferValue": "WindowsServer",
-        "SkuValue": "2016-Datacenter"
-      },
-      "Server2019": {
-        "PublisherValue": "MicrosoftWindowsServer",
-        "OfferValue": "WindowsServer",
-        "SkuValue": "2019-Datacenter"
-      }
-    },
     "availabilitySetPlatformFaultDomainCount": "2",
     "availabilitySetPlatformUpdateDomainCount": "5",
     "vNetRG": "fdlrsg01",
@@ -126,19 +108,6 @@
     "storageAccountRef": "[resourceId(variables('storageAccountRG'), 'Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
   },
   "resources": [
-    {
-      "name": "[variables('diagnosticStorageAccountName')]",
-      "type": "Microsoft.Storage/storageAccounts",
-      "location": "[variables('location')]",
-      "apiVersion": "2019-06-01",
-      "sku": {
-        "name": "Standard_LRS"
-      },
-      "tags": {
-        "displayName": "diagnosticStorageAccount"
-      },
-      "kind": "StorageV2"
-    },
     {
       "type": "Microsoft.Compute/availabilitySets",
       "name": "[parameters('availabilitySetName')]",
